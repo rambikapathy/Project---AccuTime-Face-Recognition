@@ -81,6 +81,7 @@ import pandas as pd
 #For Database
 import sqlite3
 from sqlite3 import Error
+import csv
  
 #For real time clock
 import time
@@ -106,7 +107,8 @@ import pyttsx3
 from PySide6.QtWidgets import QApplication, QWidget, QLabel
 from PySide6.QtGui import QIcon, QMovie
 
-import AttendanceViewing
+import tkinter as tkr
+import tkinter.ttk as tkrttk
  
  
 #------------------Destroy root windows, once the next phase has been iniated
@@ -181,7 +183,6 @@ class VerificationBar:
 accuTimeVoice = pyttsx3.init() #Initialize text to spech converter library defined as accuTimeVoice
  
 #Voice Assistance on Main  Menu
-'''
 def voiceAssist():
     accuTimeVoice.say("Welcome to AccuTime")
     accuTimeVoice.say("The next phase will take you onto the student registration form")    
@@ -192,12 +193,12 @@ def voiceAssist():
  
 #Voice Assistance on Student register window
 def voiceAssist2():
-    accuTimeVoice.say("Whilst training your image, please ensure the camera is well positioned and not affected by unfavourable lighting")
+    accuTimeVoice.say("Whilst training your image, please ensure the camera is well positoned and not affected by unfavourable lighting")
     accuTimeVoice.say("Inorder to capture and store your face to the image database, please ensure you enter the spacebar")  
     accuTimeVoice.say("Please ensure you key E to exit the registration form")                
     accuTimeVoice.runAndWait()
     accuTimeVoice.stop()    
-''' 
+ 
 #------------------Student Registration Form (located on Main menu)
 def registerStudent():
     global windowRegisterStudent
@@ -220,7 +221,7 @@ def registerStudent():
     global studentID_Input #variable defined to store student's ID
  
     Label(windowRegisterStudent,text = "Please register your details below (Students ONLY) ", fg = "Cornsilk",bg = "cadet blue", width = "100", height = "2", font = ("Times New Roman", 15)).pack()
-    #voiceAssist() #Activate first phase of voice recognition
+    voiceAssist() #Activate first phase of voice recognition
     Label(windowRegisterStudent,text = "").pack()
  
     Label(windowRegisterStudent,text = "Student Name: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
@@ -248,8 +249,6 @@ def registerStudent():
     Label(windowRegisterStudent,text = "").pack()
     #Button to capture student image
     Button(windowRegisterStudent,text = "Take Picture & Submit", command = takestudentpic, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 12)).pack()
-    Label(windowRegisterStudent,text = "").pack()
-    Button(windowRegisterStudent,text = "Student Attendance Clock-in", command = attendanceClockIn, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 12)).pack()
          
    
 #------------------Inserting Student Registration Data into database (named Student)
@@ -317,7 +316,7 @@ def takestudentpic():
     global img_counter
  
     #Phase 2 of voice assitance giving the visually impaired student with concise instructions as to how to log attendance
-    #voiceAssist2()
+    voiceAssist2()
     #Iniate the video camera from PC/laptop webcam to capture student facces
     cam = cv2.VideoCapture(0)
     cv2.namedWindow("Student Face Registration")
@@ -337,16 +336,18 @@ def takestudentpic():
         if k%256 == 32: #press spacebar to capture unlimited no of images
             global student
            
-            student = "{}.png".format(StudentName_input.get())#Store the captured face of student in a particular format
+            student = "{},{},{}.png".format(StudentName_input.get(),studentID_Input.get(),img_counter)#Store the captured face of student in a particular format
             global writeImage
-            save_path = "StudentImages/"+  student
-            writeImage = cv2.imwrite(save_path, frame)#write captured image to database/local drive
+            writeImage = cv2.imwrite(student, frame)#write captured image to database/local drive
  
             print("{} image captured!Thankyou".format(student)) #Terminal output, not on application window
-            img_counter +=1
-        elif(img_counter == 1):#if student wishes to exit, key E
+ 
+            location = 'StudentImages'
+            uploadImage = [os.path.join(location,store) for store in os.listdir(location)]
+            img_counter += 1 #increase counter depending on the image take
+        elif(cv2.waitKey(1)==ord('e')):#if student wishes to exit, key E
             break
-    
+ 
     cam.release()#end face detection
     cv2.destroyAllWindows()#destroy cv2 window
  
@@ -453,7 +454,7 @@ def takestudentpic():
 #------------------Face Encoding
 # This function implements an algorithm in the form of Eucildean, to measure and contrast important features on faces
 # This can be the contrast in colour or size, distances between both eyes, eyebrows and distance between mouth and nose
-def encode(images):
+def training(images):
     encodeList = []
  
     for img in images:
@@ -464,7 +465,7 @@ def encode(images):
  
 #------------------Initiate csv file to log student attendance
 def studentAttendance(name):
-    with open('attendanceReport.csv','r+') as FILE:    
+    with open('attendanceReport.csv','r') as FILE:    
         allLines = FILE.readlines() #read all lines in file        
         #name = "Unknown"
         attendanceList = [] #declare list literal
@@ -475,25 +476,59 @@ def studentAttendance(name):
             now = datetime.now()
             dtString = now.strftime('%d/%b/%Y, %H:%M:%S')
             FILE.writelines(f'\n{name},{dtString}')  #write students who have attended to the csv file
- 
+
+'''
+#------------------Initiate csv file to log student attendance
+def studentAttendance2(name):
+    with open('attendanceReport.csv','r+') as csv_file:
+        allLines = csv.reader(csv_file)
+        attendanceList = [] #declare list literal
+        #for line in allLines:
+        #    entry = line.split(',')#split any string into array of substring
+        #    attendanceList.append(entry[0])#apply to csv
+        if name not in allLines:
+            now = datetime.now()
+            dtString = now.strftime('%d/%b/%Y, %H:%M:%S')
+            log = name + dtString
+            csv.writer(f'\n{log}') 
+'''
+def treeview():
+    screen = tkr.Tk()
+    screen.geometry("800x200")
+
+#Get the list for Treeview
+    treelist = tkrttk.Treeview(screen)
+    #format column
+    treelist.column("Student Name", width=50, minwidth=25)
+    treelist.column("Student ID", width=50, minwidth=25)
+    treelist.column("Date", width=50, minwidth=25)
+    treelist.column("Time", width=50, minwidth=25)
+    #define column heading
+    treelist.heading("Student Name", text ="Student Name", anchor= tkr.W)
+    treelist.heading("Student ID", text ="Student ID", anchor= tkr.W)
+    treelist.heading("Date", text ="Date", anchor= tkr.W)        
+    treelist.heading("Time", text ="Time", anchor= tkr.W)
+    treelist.pack(side=tkr.TOP,fill=tkr.X)
+    tkr.mainloop()
+
+
+
 #------------------ create or clear csv file to log student attendance
  
 def MainCreateFile():
-    import csv
+
     attendancecsv = open("attendanceReport.csv", "w+")
     writer = csv.DictWriter(
-            attendancecsv, fieldnames=['Student Name', 'Date','Time'])
+            attendancecsv, fieldnames=['Studet Name', 'Student ID' , 'Date','Time'])
     writer.writeheader()
     attendancecsv.close()
+
  
- 
- 
- 
- 
+
 #------------------Attendance marking through face recogniton (Eucildean Algorithms)
 def attendanceClockIn():
-    MainCreateFile()
-    encodeListKnown = encode(images) #if the algorithms identify student image through encoding, train the images
+    MainCreateFile()   
+    encodeListKnown = training(images) #if the algorithms identify student image through encoding, train the images
     cap = cv2.VideoCapture(0)
  
     while True:
@@ -532,11 +567,11 @@ def loginSuccess():
     Label(windowloginSuccess,text = " ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     Label(windowloginSuccess,text = "Main Menu", fg = "cadet blue", font = ("Times New Roman", 28)).pack()
     Label(windowloginSuccess,text = " ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
-    Button(windowloginSuccess,text = "Student Enrollment", command = registerStudent, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
+    Button(windowloginSuccess,text = "Register Student", command = registerStudent, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
     Label(windowloginSuccess,text = " ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     Button(windowloginSuccess,text = "Student Attendance Clock-in", command = attendanceClockIn, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
     Label(windowloginSuccess,text = " ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
-    Button(windowloginSuccess,text = "Attendance Report", command = AttendanceViewing.AttendanceTreeView, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
+    Button(windowloginSuccess,text = "Attendance Report", command = treeview, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
     Label(windowloginSuccess,text = " ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     video_capture = cv2.VideoCapture(0)
     Button(windowloginSuccess,text = "Exit", command = window.destroy, width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 15)).pack()
@@ -578,7 +613,7 @@ def loginSuccess():
     #When student frame is captured, release the capture
    # cap.release()
  
-#The next functions outline the label for notifying administrators if they had entered incorrect, unmatchable details
+#The next functions outline the label for notifying adminstrators if they had entered incorrect, unmatchable details
 def incorrectPW():
     Label(windowLogin,text = "Passcode Incorrect", fg = "red", font = ("Times New Roman", 20)).pack()
  
@@ -586,7 +621,7 @@ def userUnfound():
     Label(windowLogin,text = "User not found", fg = "red", font = ("Times New Roman", 20)).pack()
  
 #------------------Database initalization (Admins)
-#This method establishes a connection within a database for Administrators
+#This method establishes a connection within a database for Adminstrators
 def create_AdminTable():
     query = "DROP TABLE IF EXISTS Admin"#DROP ANY EXISTING TABLES
     cursor.execute(query)
@@ -617,13 +652,13 @@ def passcodeStrength(passcode):
  
     valid = all([num_char, upper_char,specialUpper_char,lower_char])#consider all arguments for strong password
     if len(passcode)<4: # if character for password is less than 4 output weak
-        return "Weak "
+        return "Weak Passcode"
     elif len(passcode)>=6 and valid: #if character is above 6, then output strong
-        return "Strong "
+        return "Strong Passcode"
     else:
-        return "Average "#else average
+        return "Average Passcode"#else average
  
-#------------------Administrators register page
+#------------------Adminstrator register page
 def adminstratorRegister():
     global username_input
     global passcode_input
@@ -652,14 +687,14 @@ def adminstratorRegister():
     if passcode.get() == confirmPasscode.get():
         print("")
     else:
-        messagebox.showerror("Error", "Password does not match")
+        messagebox.showerror("Error", "Passcode does not match")
 #If any of the values are missing , throw an error to complete all fields
     if passcode.get() == "" or confirmPasscode.get() == "" or firstName.get() == "" or lastName.get() == "" or username.get()== "":
         messagebox.showerror("Error", "Please complete all required fields")
         if passcode.get() == confirmPasscode.get():
             print("")
         else:
-            messagebox.showerror("Error", "Password does not match")        
+            messagebox.showerror("Error", "Passcode does not match")        
     else:
         #Removes any strings on Admin register page once submit button is entered
         username_Input.delete(0, END)
@@ -669,13 +704,13 @@ def adminstratorRegister():
         confirmPasscode_Input.delete(0, END)
  
         strength = passcodeStrength(passcode_input)#outputs the strength of the password once user submits their credentials
-        Label (windowRegister,text = "Password is {}".format(strength), fg = "Black", font = ("Times New Roman", 14)).pack()    
+        Label (windowRegister,text = "Passcode is {}".format(strength), fg = "Black", font = ("Times New Roman", 14)).pack()    
         Label (windowRegister,text = "Registration Successful", fg = "green", font = ("Times New Roman", 20)).pack()
         query = "INSERT INTO Admin (firstName, lastName, username, passcode) VALUES (?, ?,?,?)"    #Stores data as query into database  
         cursor.execute(query, (firstName_input, lastName_input, username_input, passcode_input))
         conn.commit()    
  
-#------------------Administrators Login page
+#------------------Adminstrator Login page
 def adminstratorLogin():
     global username_authenticate
     global passcode_authenticate
@@ -750,32 +785,32 @@ def AdminRegisterWindow():
     #Global string variables for user's input for username and password on register window
     global username_Input
     global passcode_Input
-    Label(windowRegister,text = "Please register your details below (Administrator ONLY) ", fg = "Cornsilk",bg = "cadet blue", width = "100", height = "2", font = ("Times New Roman", 15)).pack()
+    Label(windowRegister,text = "Please register your details below (Adminstrator ONLY) ", fg = "Cornsilk",bg = "cadet blue", width = "100", height = "2", font = ("Times New Roman", 15)).pack()
     Label(windowRegister,text = "").pack()
  
-    #Administrators to input first name
+    #Adminstrator to input first name
     Label(windowRegister,text = "First Name: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     firstName_Input = Entry(windowRegister,textvariable = firstName)
     firstName_Input.pack()
    
-    #Administrators to input last name
+    #Adminstrator to input last name
     Label(windowRegister,text = "Last Name: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     lastName_Input = Entry(windowRegister,textvariable = lastName)
     lastName_Input.pack()
  
-    #Administrators to input username
+    #Adminstrator to input username
     Label(windowRegister,text = "Username: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
     username_Input = Entry(windowRegister,textvariable = username)
     username_Input.pack()
  
-    #Administrators to input password
-    Label(windowRegister,text = "Password: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
-    Label(windowRegister,text = "Password must contain upper,lower case and special values for strong password", fg = "red").pack()    
+    #Adminstrator to input password
+    Label(windowRegister,text = "Passcode: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()
+    Label(windowRegister,text = "Passcode must contain upper,lower case and special values for strong passcode", fg = "red").pack()    
     passcode_Input = Entry(windowRegister,textvariable = passcode, show = "*")
     passcode_Input.pack()
  
-    #Administrators to confirm password
-    Label(windowRegister,text = "Confirm Password: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()    
+    #Adminstrator to confirm password
+    Label(windowRegister,text = "Confirm Passcode: ", width = 15, height = 1, font = ("Times New Roman", 12)).pack()    
     confirmPasscode_Input = Entry(windowRegister,textvariable = confirmPasscode, show = "*")
     confirmPasscode_Input.pack()
     #passcodeStrength(passcode)
@@ -794,7 +829,7 @@ def AdminRegisterWindow():
     Button(windowRegister,text = "Exit", width = 25, height = 1,bg = "powder blue", font = ("Times New Roman", 12), command = adminstratorExit).pack()
  
  
-#CLock on Administrators registration page
+#CLock on Adminstrator registration page
     def clock2():
         hour = time.strftime("%I")
         minute = time.strftime("%M")
@@ -855,7 +890,7 @@ def AdminRegisterWindow():
 #    passcodeEntry = Entry(forgetwindow,textvariable = passcode_Entry,show = "*")
 #    passcodeEntry.pack()
 #    Label(forgetwindow,text = "").pack()
-#    Label(forgetwindow,text = "Confirm New Passcode: ", font = ("Times New Roman", 15)).Fpack()    
+#    Label(forgetwindow,text = "Confirm New Passcode: ", font = ("Times New Roman", 15)).pack()    
 #    passcodeEntry_Confirm = Entry(forgetwindow,textvariable = passcode_Entry_Confirm,show = "*")
 #    passcodeEntry_Confirm.pack()
 #    Label(forgetwindow,text = "").pack()
@@ -876,7 +911,7 @@ def AdminLoginWindow():
  
     windowLogin.title("Login")
     windowLogin.geometry("950x660")
-    Label(windowLogin,text = "Please login your details below (Administrators ONLY)", fg = "Cornsilk",bg = "cadet blue", width = "300", height = "5", font = ("Times New Roman", 15)).pack()
+    Label(windowLogin,text = "Please login your details below (Adminstrator ONLY)", fg = "Cornsilk",bg = "cadet blue", width = "300", height = "5", font = ("Times New Roman", 15)).pack()
     Label(windowLogin,text = "").pack()
     username_validation = StringVar()
     passcode_validation = StringVar()  
@@ -905,7 +940,7 @@ def AdminLoginWindow():
     Button(windowLogin,text = "Exit", width = 25, height = 2,bg = "powder blue", font = ("Times New Roman", 12), command = adminstratorExit).pack()
  
  
-#CLock on Administrators login page  
+#CLock on Adminstrator login page  
     def clock1():
         hour = time.strftime("%I")
         minute = time.strftime("%M")
